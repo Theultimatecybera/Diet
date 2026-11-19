@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+{% if not profile %}
+<div class="cardx text-center py-5">
+  <div style="font-size:3rem">🥗</div>
+  <h2>Let's set up your plan</h2>
+  <p class="text-muted mx-auto" style="max-width:460px">Answer a few questions about your body, activity and food preferences. We'll calculate your targets and build a 7-day meal plan.</p>
+  <a class="btn-orange" href="{{ url_for('profile') }}">Start nutrition assessment</a>
+</div>
+{% else %}
+{% for w in warnings %}<div class="warn mb-3">⚠️ {{ w }}</div>{% endfor %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-4">
+    <div class="cardx">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat"><div class="badge-ico" style="width:64px;height:64px;font-size:2rem">🧑</div></div>
+        <div><h3 class="mb-0">{{ profile.full_name }}</h3>
+          <div class="text-muted small">{{ profile.age }} yrs · {{ profile.gender }} · {{ profile.height_cm|round|int }} cm · {{ profile.weight_kg|round(1) }} kg</div></div>
+      </div>
+      <div class="mt-3 d-flex flex-wrap gap-2"><span class="pill">{{ profile.goal }}</span><span class="pill sky">{{ profile.food_pref }}</span><span class="pill org">{{ ACTIVITY[profile.activity_level][1].split(' (')[0] }}</span></div>
+      <a href="{{ url_for('profile') }}" class="btn-ghost mt-3 btn-sm">Edit profile</a>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="cardx">
+      <div class="row align-items-center g-3">
+        <div class="col-sm-4 d-flex justify-content-center">
+          {% set pc = [ (eaten.calories * 100 / a.target_calories)|round|int, 100]|min %}
+          <div class="ring" style="--p:{{ pc }}"><div><div><b>{{ pc }}%</b><br><small class="text-muted">of target</small></div></div></div>
+        </div>
+        <div class="col-sm-8">
+          <h3>Today's calories</h3>
+          <div class="row text-center g-2">
+            <div class="col-4"><div class="val h3 mb-0">{{ a.target_calories }}</div><div class="small text-muted">Target</div></div>
+            <div class="col-4"><div class="val h3 mb-0">{{ eaten.calories|round|int }}</div><div class="small text-muted">Consumed</div></div>
+            <div class="col-4"><div class="val h3 mb-0" style="color:{{ 'var(--orange-d)' if a.target_calories - eaten.calories < 0 else 'var(--green)' }}">{{ (a.target_calories - eaten.calories)|round|int }}</div><div class="small text-muted">Remaining</div></div>
+          </div>
+          <div class="progress-x mt-3 {{ 'over' if eaten.calories > a.target_calories }}"><span style="width:{{ pc }}%"></span></div>
+          <a class="btn-orange mt-3 btn-sm" href="{{ url_for('food_tracker') }}">Log food</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  {% for ico, val, lbl, cls in [('⚖️', a.bmi ~ ' · ' ~ a.bmi_category, 'BMI', ''), ('🔥', a.bmr ~ ' kcal', 'BMR', 'sky'), ('⚡', a.tdee ~ ' kcal', 'TDEE', 'org'), ('💧', a.water_l ~ ' L', 'Water per day (' ~ a.water_glasses ~ ' glasses)', 'sky')] %}
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat {{ cls }}"><div class="badge-ico">{{ ico }}</div><div><div class="val" style="font-size:{{ '1.1rem' if loop.first else '1.5rem' }}">{{ val }}</div><div class="lbl">{{ lbl }}</div></div></div></div></div>
+  {% endfor %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="cardx"><h3>Protein</h3><div class="d-flex justify-content-between small"><span>{{ eaten.protein|round|int }} g</span><span class="text-muted">of {{ a.protein_g }} g</span></div><div class="progress-x"><span style="width:{{ [eaten.protein*100/a.protein_g,100]|min|round|int }}%"></span></div></div></div>
+  <div class="col-md-4"><div class="cardx"><h3>Carbohydrates</h3><div class="d-flex justify-content-between small"><span>{{ eaten.carbs|round|int }} g</span><span class="text-muted">of {{ a.carbs_g }} g</span></div><div class="progress-x sky"><span style="width:{{ [eaten.carbs*100/a.carbs_g,100]|min|round|int }}%"></span></div></div></div>
+  <div class="col-md-4"><div class="cardx"><h3>Fat</h3><div class="d-flex justify-content-between small"><span>{{ eaten.fat|round|int }} g</span><span class="text-muted">of {{ a.fat_g }} g</span></div><div class="progress-x org"><span style="width:{{ [eaten.fat*100/a.fat_g,100]|min|round|int }}%"></span></div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-6 col-xl-3"><div class="cardx"><h3>Macronutrient targets (g)</h3><div class="chart-box"><canvas id="macroChart"></canvas></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="cardx"><h3>Calories, last 7 days</h3><div class="chart-box"><canvas id="calChart"></canvas></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="cardx"><h3>Weight progress (kg)</h3><div class="chart-box"><canvas id="weightChart"></canvas></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="cardx"><h3>Challenges completed (%)</h3><div class="chart-box"><canvas id="chChart"></canvas></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="cardx">
+    <h3>Today's challenges</h3>
+    <div class="d-flex justify-content-between small mb-1"><span>{{ done }} of {{ CHALLENGES|length }} completed</span><b>{{ pct }}%</b></div>
+    <div class="progress-x org"><span style="width:{{ pct }}%"></span></div>
+    <div class="d-flex gap-3 mt-3"><span class="pill org">⭐ {{ stats.points }} points</span><span class="pill">🔥 {{ stats.streak }}-day streak</span></div>
+    <a class="btn-green mt-3 btn-sm" href="{{ url_for('challenges') }}">Open challenges</a>
+  </div></div>
+  <div class="col-lg-7"><div class="cardx">
+    <h3>Tips for your goal</h3>
+    <ul class="mb-3">{% for t in tips %}<li>{{ t }}</li>{% endfor %}</ul>
+    <a class="btn-ghost btn-sm" href="{{ url_for('diet_plan') }}">View my 7-day diet plan</a>
+  </div></div>
+</div>
+<p class="disclaimer mt-3 mb-0">{{ a.disclaimer }}</p>
+<script id="page-data" type="application/json">{{ data|tojson }}</script>
+{% endif %}
+{% endblock %}

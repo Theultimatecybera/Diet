@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}History & Reports{% endblock %}
+{% block heading %}History &amp; reports{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <p class="mb-0 text-muted">Everything you have saved: assessments, diet plans, calorie intake, challenges and weight.</p>
+  <a class="btn-orange" href="{{ url_for('report') }}">⬇ Download PDF report</a>
+</div>
+<ul class="nav nav-tabs mb-3" role="tablist">
+  {% for k, l in [('assessments','Assessments'),('plans','Diet plans'),('calories','Calorie intake'),('challenges','Challenges'),('weight','Weight')] %}
+  <li class="nav-item"><button class="nav-link {{ 'active' if tab==k }}" data-bs-toggle="tab" data-bs-target="#t-{{ k }}" type="button">{{ l }}</button></li>{% endfor %}
+</ul>
+<div class="tab-content">
+  <div class="tab-pane fade {{ 'show active' if tab=='assessments' }}" id="t-assessments"><div class="cardx"><div class="table-responsive"><table class="table">
+    <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>BMR</th><th>TDEE</th><th>Target kcal</th><th>P/C/F (g)</th><th>Goal</th><th>ML range</th><th>ML focus</th></tr></thead>
+    <tbody>{% for r in assessments %}<tr><td>{{ r.created_at }}</td><td>{{ r.weight_kg }} kg</td><td>{{ r.bmi }}</td><td>{{ r.bmr }}</td><td>{{ r.tdee }}</td><td>{{ r.calories }}</td><td>{{ r.protein_g }}/{{ r.carbs_g }}/{{ r.fat_g }}</td><td>{{ r.goal }}</td><td>{{ r.ml_low }}–{{ r.ml_high }}</td><td>{{ r.ml_focus }}</td></tr>
+    {% else %}<tr><td colspan="10" class="text-muted">No assessments yet. <a href="{{ url_for('profile') }}">Complete your profile</a>.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="tab-pane fade {{ 'show active' if tab=='plans' }}" id="t-plans"><div class="cardx"><div class="table-responsive"><table class="table">
+    <thead><tr><th>Created</th><th>Calories</th><th>Goal</th><th>Preference</th><th></th></tr></thead>
+    <tbody>{% for r in plans %}<tr><td>{{ r.created_at }}</td><td>{{ r.calories }} kcal</td><td>{{ r.goal }}</td><td>{{ r.food_pref }}</td><td><a class="btn-ghost btn-sm py-0" href="{{ url_for('diet_plan', plan_id=r.id) }}">View</a></td></tr>
+    {% else %}<tr><td colspan="5" class="text-muted">No plans yet.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="tab-pane fade {{ 'show active' if tab=='calories' }}" id="t-calories"><div class="row g-3"><div class="col-lg-7"><div class="cardx"><h3>Calories, last 14 days</h3><div class="chart-box"><canvas id="calChart"></canvas></div></div></div>
+    <div class="col-lg-5"><div class="cardx"><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>kcal</th><th>P</th><th>C</th><th>F</th></tr></thead>
+    <tbody>{% for r in series|reverse %}<tr><td>{{ r.date }}</td><td>{{ r.calories }}</td><td>{{ r.protein }}</td><td>{{ r.carbs }}</td><td>{{ r.fat }}</td></tr>{% endfor %}</tbody></table></div></div></div></div></div>
+  <div class="tab-pane fade {{ 'show active' if tab=='challenges' }}" id="t-challenges"><div class="cardx"><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Completed</th><th>Points</th><th>Completion</th></tr></thead>
+    <tbody>{% for r in ch %}<tr><td>{{ r.date }}</td><td>{{ r.done }} / {{ CHALLENGES|length }}</td><td>{{ r.points }}</td><td>{{ r.pct }}%</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="tab-pane fade {{ 'show active' if tab=='weight' }}" id="t-weight"><div class="row g-3">
+    <div class="col-lg-7"><div class="cardx"><h3>Weight over time (kg)</h3><div class="chart-box"><canvas id="weightChart"></canvas></div></div></div>
+    <div class="col-lg-5"><div class="cardx"><h3>Log your weight</h3>
+      <form method="post" class="row g-2 mb-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-6"><input class="form-control" type="number" step="0.1" min="30" max="250" name="weight_kg" placeholder="kg" required aria-label="Weight in kg"></div>
+        <div class="col-6"><input class="form-control" type="date" name="log_date" value="{{ today }}" max="{{ today }}" required aria-label="Date"></div>
+        <div class="col-12"><button class="btn-green w-100" type="submit">Save weight</button></div></form>
+      <div class="table-responsive" style="max-height:240px"><table class="table"><thead><tr><th>Date</th><th>Weight</th></tr></thead><tbody>{% for w in weights %}<tr><td>{{ w.log_date }}</td><td>{{ w.weight_kg }} kg</td></tr>{% endfor %}</tbody></table></div></div></div></div></div>
+</div>
+<script id="page-data" type="application/json">{{ data|tojson }}</script>
+{% endblock %}

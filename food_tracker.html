@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Food Tracker{% endblock %}
+{% block heading %}Daily food tracker{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <a class="btn-ghost" href="{{ url_for('food_tracker', date=prev) }}">‹ Previous</a>
+  <form method="get" class="d-flex gap-2"><input class="form-control" type="date" name="date" value="{{ d }}" max="{{ today }}" onchange="this.form.submit()" aria-label="Date"></form>
+  {% if d < today %}<a class="btn-ghost" href="{{ url_for('food_tracker', date=next) }}">Next ›</a>{% endif %}
+  {% if d != today %}<a class="btn-ghost" href="{{ url_for('food_tracker') }}">Today</a>{% endif %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-8"><div class="cardx">
+    <div class="row text-center g-2 mb-3">
+      <div class="col-4"><div class="h3 mb-0">{{ a.target_calories }}</div><div class="small text-muted">Target kcal</div></div>
+      <div class="col-4"><div class="h3 mb-0">{{ tot.calories|round|int }}</div><div class="small text-muted">Consumed</div></div>
+      {% set rem = a.target_calories - tot.calories %}
+      <div class="col-4"><div class="h3 mb-0" style="color:{{ 'var(--orange-d)' if rem < 0 else 'var(--green)' }}">{{ rem|round|int }}</div><div class="small text-muted">{{ 'Over target' if rem < 0 else 'Remaining' }}</div></div>
+    </div>
+    <div class="progress-x mb-3 {{ 'over' if rem < 0 }}"><span style="width:{{ [tot.calories*100/a.target_calories,100]|min|round|int }}%"></span></div>
+    {% for lbl, v, t, cls in [('Protein', tot.protein, a.protein_g, ''), ('Carbs', tot.carbs, a.carbs_g, 'sky'), ('Fat', tot.fat, a.fat_g, 'org')] %}
+    <div class="d-flex justify-content-between small"><span>{{ lbl }}</span><span>{{ v|round|int }} / {{ t }} g</span></div>
+    <div class="progress-x {{ cls }} mb-2" style="height:7px"><span style="width:{{ [v*100/t,100]|min|round|int }}%"></span></div>
+    {% endfor %}
+  </div></div>
+  <div class="col-lg-4"><div class="cardx"><h3>Macros consumed (g)</h3><div class="chart-box" style="height:200px"><canvas id="eatenChart"></canvas></div></div></div>
+</div>
+<div class="cardx mb-3">
+  <h3>Add food</h3>
+  <form method="post" id="foodForm" class="row g-3 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="log_date" value="{{ d }}">
+    <div class="col-md-4"><label class="form-label" for="food_name">Food</label>
+      <input class="form-control" id="food_name" name="food_name" list="foodlist" autocomplete="off" placeholder="Search e.g. roti, dal, paneer" required>
+      <datalist id="foodlist">{% for f in data.foods %}<option value="{{ f.name }}">{{ f.desc }} · {{ f.calories|round|int }} kcal</option>{% endfor %}</datalist></div>
+    <div class="col-6 col-md-2"><label class="form-label" for="servings">Servings</label><input class="form-control" type="number" id="servings" name="servings" min="0.1" max="20" step="0.1" value="1" required></div>
+    <div class="col-6 col-md-3"><label class="form-label" for="meal">Meal</label>
+      <select class="form-select" id="meal" name="meal">{% for m in ['Breakfast','Morning Snack','Lunch','Evening Snack','Dinner'] %}<option>{{ m }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><button class="btn-green w-100" type="submit">Add to log</button></div>
+    <div class="col-12"><div class="small text-muted" id="foodPreview">Choose a food to preview calories and macros.</div></div>
+    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="customToggle" name="custom" value="1"><label class="form-check-label" for="customToggle">Food not in the list? Enter nutrition values manually</label></div></div>
+    <div class="row g-2 mt-0 ms-0" id="customRow" hidden>
+      {% for n, l in [('calories','Calories (kcal)'),('protein','Protein (g)'),('carbs','Carbs (g)'),('fat','Fat (g)')] %}
+      <div class="col-6 col-md-3"><label class="form-label" for="c_{{ n }}">{{ l }}</label><input class="form-control" type="number" step="0.1" min="0" id="c_{{ n }}" name="{{ n }}" value="0"></div>{% endfor %}
+    </div>
+  </form>
+</div>
+<div class="cardx">
+  <h3>Logged on {{ d }}</h3>
+  {% if logs %}
+  <div class="table-responsive"><table class="table align-middle">
+    <thead><tr><th>Meal</th><th>Food</th><th>Quantity</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead>
+    <tbody>{% for l in logs %}<tr><td>{{ l.meal }}</td><td>{{ l.food_name }}</td><td>{{ l.quantity_text }}</td><td>{{ l.calories|round|int }}</td><td>{{ l.protein|round(1) }}</td><td>{{ l.carbs|round(1) }}</td><td>{{ l.fat|round(1) }}</td>
+      <td><form method="post" action="{{ url_for('delete_food', fid=l.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-ghost btn-sm py-0" aria-label="Delete {{ l.food_name }}">✕</button></form></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="text-muted mb-0">Nothing logged yet. Add your first meal above.</p>{% endif %}
+</div>
+<script id="page-data" type="application/json">{{ data|tojson }}</script>
+{% endblock %}

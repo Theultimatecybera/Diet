@@ -1,0 +1,49 @@
+MODEL EVALUATION REPORT - Smart Nutrition & Diet Planner
+============================================================
+Generated: 2026-11-19 07:14
+
+1. DATASET
+   Raw rows: 5000   After cleaning: 5000   Removed: 0
+   Train/test split: 4000 / 1000 (80/20, stratified on diet_focus)
+   Features (10): age, gender_code, height_cm, weight_kg, bmi, activity_factor, exercise_min, meals_per_day, goal_loss, goal_gain
+   Food table: 72 foods, 100.0% have calories consistent with 4/4/9 kcal per g macros (+-30%)
+
+   NOTE: user_profiles.csv is SYNTHETIC (see train_model.py docstring). Scores show how well the
+   models learn the simulated dietitian policy, not real-world clinical accuracy.
+
+2. CALORIE REGRESSION (target: daily calories)
+   Baseline (mean)           MAE_kcal=387.1  RMSE_kcal=488.7  R2=-0.0005
+   Decision Tree             MAE_kcal=127.1  RMSE_kcal=163.0  R2=0.8887
+   Random Forest             MAE_kcal=107.0  RMSE_kcal=139.1  R2=0.9189  CV_R2_5fold=0.9166  range_coverage_10_90_pct=63.8
+
+3. FOOD-FOCUS CLASSIFICATION (4 classes)
+   Baseline (most frequent)  accuracy=0.39  macro_F1=0.1403
+   Decision Tree             accuracy=0.847  macro_F1=0.7931
+   Random Forest             accuracy=0.872  macro_F1=0.8052  CV_accuracy_5fold=0.8644
+
+   Confusion matrix (rows=true, cols=predicted), labels: balanced, calorie_dense_protein, high_carb_energy, high_protein_lean
+   [302, 23, 2, 58]
+   [5, 159, 7, 6]
+   [2, 16, 24, 6]
+   [3, 0, 0, 387]
+
+   Per-class report (Random Forest, test set):
+                          precision    recall  f1-score   support
+   
+                balanced       0.97      0.78      0.87       385
+   calorie_dense_protein       0.80      0.90      0.85       177
+        high_carb_energy       0.73      0.50      0.59        48
+       high_protein_lean       0.85      0.99      0.91       390
+   
+                accuracy                           0.87      1000
+               macro avg       0.84      0.79      0.81      1000
+            weighted avg       0.88      0.87      0.87      1000
+
+4. FEATURE IMPORTANCE (Random Forest)
+   calorie_model: activity_factor=0.4386, gender_code=0.2424, weight_kg=0.1172, goal_loss=0.0856, height_cm=0.0482, age=0.0271
+   focus_model: goal_gain=0.2897, goal_loss=0.2566, bmi=0.219, weight_kg=0.0819, height_cm=0.0436, exercise_min=0.0432
+
+5. HOW THE MODEL IS USED
+   - Calorie model -> shows a predicted calorie RANGE (10th-90th percentile of tree outputs).
+   - Focus model   -> picks food categories to emphasise when building the 7-day plan.
+   - Safe calorie targets (BMI/BMR/TDEE/macros) remain rule-based and are NOT produced by ML.

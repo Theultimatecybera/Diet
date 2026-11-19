@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Diet Plan{% endblock %}
+{% block heading %}7-day diet plan{% endblock %}
+{% block content %}
+{% set pl = plan.plan %}
+<div class="cardx mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <h2 class="mb-1">Personalised for {{ p.full_name }}</h2>
+      <div class="d-flex flex-wrap gap-2 mb-2"><span class="pill">{{ plan.goal }}</span><span class="pill sky">{{ plan.food_pref }}</span><span class="pill org">Target {{ pl.target_calories }} kcal</span><span class="pill">Avg {{ pl.avg_calories }} kcal/day</span></div>
+      <p class="mb-0 small text-muted">ML food focus: <b>{{ pl.ml.focus_label }}</b> — {{ pl.ml.focus_text }}<br>Plan created {{ plan.created_at }}{% if plan.id != latest %} · <a href="{{ url_for('diet_plan') }}">view latest plan</a>{% endif %}</p>
+    </div>
+    <form method="post" action="{{ url_for('regenerate_plan') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-orange" type="submit">🔄 Regenerate plan</button></form>
+  </div>
+  {% for w in pl.warnings %}<div class="warn mt-3">⚠️ {{ w }}</div>{% endfor %}
+</div>
+<div class="daybar mb-3" id="dayBar" role="tablist">{% for d in pl.days %}<button type="button" data-day="{{ loop.index0 }}" class="{{ 'active' if loop.first }}" role="tab">{{ d.day[:3] }}</button>{% endfor %}</div>
+{% for d in pl.days %}
+{% set di = loop.index0 %}
+<section class="day-panel" data-day="{{ di }}" {{ 'hidden' if not loop.first }}>
+  <div class="cardx mb-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2"><h3 class="mb-0">{{ d.day }}</h3>
+      <div class="macro-chips"><span class="k">{{ d.totals.calories|round|int }} kcal</span><span>P {{ d.totals.protein|round|int }} g</span><span>C {{ d.totals.carbs|round|int }} g</span><span>F {{ d.totals.fat|round|int }} g</span></div></div>
+    <div class="progress-x {{ 'over' if d.totals.calories > pl.target_calories * 1.1 }}"><span style="width:{{ [d.totals.calories*100/pl.target_calories,100]|min|round|int }}%"></span></div>
+  </div>
+  <div class="row g-3">
+  {% for m in d.meals %}{% set mi = loop.index0 %}
+    <div class="col-lg-6"><div class="meal">
+      <div class="d-flex justify-content-between align-items-center mb-2"><h4>{{ {'Breakfast':'🌅','Morning Snack':'🍎','Lunch':'🍛','Evening Snack':'🥜','Dinner':'🌙'}[m.name] }} {{ m.name }}</h4>
+        <span class="pill org">{{ m.totals.calories|round|int }} kcal</span></div>
+      {% for it in m['items'] %}{% set ii = loop.index0 %}
+      <div class="item">
+        <div class="d-flex justify-content-between gap-2"><div><b>{{ it.food }}</b><div class="small text-muted">{{ it.qty_text }} · ~{{ it.grams }} g</div></div></div>
+        <div class="macro-chips"><span class="k">{{ it.calories }} kcal</span><span>P {{ it.protein }} g</span><span>C {{ it.carbs }} g</span><span>F {{ it.fat }} g</span></div>
+        {% if it.alternatives %}
+        <button class="alt-btn mt-1" type="button" data-alt-toggle>Alternatives ({{ it.alternatives|length }})</button>
+        <div class="alt-list" hidden>
+          {% for alt in it.alternatives %}
+          <div><span><b>{{ alt.food }}</b> — {{ alt.qty_text }} · {{ alt.calories }} kcal · P {{ alt.protein }} g</span>
+            <button class="btn-ghost btn-sm py-0" type="button" data-swap data-plan="{{ plan.id }}" data-day="{{ di }}" data-meal="{{ mi }}" data-item="{{ ii }}" data-alt="{{ loop.index0 }}">Swap</button></div>
+          {% endfor %}
+        </div>{% endif %}
+      </div>
+      {% else %}<p class="text-muted mb-0">No foods available for this meal with your current filters.</p>{% endfor %}
+    </div></div>
+  {% endfor %}
+  </div>
+</section>
+{% endfor %}
+<p class="disclaimer mt-3 mb-0">{{ a.disclaimer }} Quantities are approximate household measures; nutrient values are typical averages and vary by recipe.</p>
+{% endblock %}

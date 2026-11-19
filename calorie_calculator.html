@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Calorie Calculator{% endblock %}
+{% block heading %}Calorie calculator{% endblock %}
+{% block content %}
+{% for w in a.warnings %}<div class="warn mb-3">⚠️ {{ w }}</div>{% endfor %}
+<h2 class="h5 mb-2">Rule-based results <span class="pill">Mifflin-St Jeor</span></h2>
+<div class="row g-3 mb-3">
+  {% for ico, val, lbl, cls in [('⚖️', a.bmi, 'BMI · ' ~ a.bmi_category, ''), ('🔥', a.bmr ~ ' kcal', 'BMR (at rest)', 'sky'), ('⚡', a.tdee ~ ' kcal', 'TDEE (maintenance)', 'org'), ('🎯', a.target_calories ~ ' kcal', 'Daily calorie target', '')] %}
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat {{ cls }}"><div class="badge-ico">{{ ico }}</div><div><div class="val">{{ val }}</div><div class="lbl">{{ lbl }}</div></div></div></div></div>
+  {% endfor %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-7"><div class="cardx">
+    <h3>Daily macronutrients, water &amp; fibre</h3>
+    {% set total_g = a.protein_g + a.carbs_g + a.fat_g %}
+    {% for lbl, g_, cls, kc in [('Protein', a.protein_g, '', 4), ('Carbohydrates', a.carbs_g, 'sky', 4), ('Fat', a.fat_g, 'org', 9)] %}
+    <div class="mb-3"><div class="d-flex justify-content-between"><b>{{ lbl }}</b><span>{{ g_ }} g <span class="text-muted small">({{ (g_*kc*100/a.target_calories)|round|int }}% of calories)</span></span></div>
+      <div class="progress-x {{ cls }}"><span style="width:{{ (g_*100/total_g)|round|int }}%"></span></div></div>
+    {% endfor %}
+    <div class="mb-3"><div class="d-flex justify-content-between"><b>Water</b><span>{{ a.water_l }} L ≈ {{ a.water_glasses }} glasses (250 ml)</span></div><div class="progress-x sky"><span style="width:{{ [a.water_l*20,100]|min|round|int }}%"></span></div></div>
+    <div class="d-flex justify-content-between"><b>Fibre</b><span>{{ a.fiber_g }} g</span></div>
+    <hr><p class="small text-muted mb-0">Healthy weight range for your height: {{ a.healthy_range[0] }}–{{ a.healthy_range[1] }} kg (BMI 18.5–24.9). {% for n in a.notes %}{{ n }} {% endfor %}</p>
+  </div></div>
+  <div class="col-lg-5"><div class="cardx"><h3>Macro split</h3><div class="chart-box"><canvas id="macroChart"></canvas></div></div></div>
+</div>
+
+<h2 class="h5 mb-2 mt-4">Machine-learning prediction <span class="pill org">Random Forest · scikit-learn</span></h2>
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="cardx">
+    <h3>Suggested calorie range</h3>
+    <div class="val h2 mb-0" style="font-family:var(--font-h)">{{ ml.calories_low }} – {{ ml.calories_high }} kcal</div>
+    <p class="text-muted small">Central estimate {{ ml.calories_pred }} kcal. The range is the 10th–90th percentile of the predictions made by the forest's individual trees.</p>
+    {% set diff = (a.target_calories - ml.calories_pred)|abs %}
+    <p class="mb-0 small">{% if ml.calories_low <= a.target_calories <= ml.calories_high %}✅ Your rule-based target ({{ a.target_calories }} kcal) sits inside the ML range.
+      {% else %}ℹ️ Your rule-based target ({{ a.target_calories }} kcal) is {{ diff }} kcal from the ML estimate. The safe rule-based target is used for your plan.{% endif %}</p>
+  </div></div>
+  <div class="col-lg-6"><div class="cardx">
+    <h3>Recommended food focus</h3>
+    <div class="h5 mb-1">{{ ml.focus_label }} <span class="pill sky">{{ ml.confidence }}% confidence</span></div>
+    <p class="small mb-2">{{ ml.focus_text }}</p>
+    <div class="mb-2">{% for c in ml.focus_categories %}<span class="pill me-1">{{ c|capitalize }}</span>{% endfor %}</div>
+    {% for lbl, pr in ml.probabilities.items() %}<div class="d-flex justify-content-between small"><span>{{ lbl }}</span><span>{{ pr }}%</span></div><div class="progress-x mb-1" style="height:6px"><span style="width:{{ pr }}%"></span></div>{% endfor %}
+  </div></div>
+</div>
+<p class="small text-muted">Model trained {{ ml.trained_at }} on {{ ml.metrics.train_rows }} profiles · calorie MAE ≈ {{ ml.metrics.calorie_mae }} kcal (R² {{ ml.metrics.calorie_r2 }}) · focus accuracy {{ (ml.metrics.focus_accuracy*100)|round(1) }}%. The training data is synthetic; see model_report.txt.</p>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6"><div class="cardx"><h3>Suggestions for your goal</h3><ul class="mb-0">{% for t in tips %}<li>{{ t }}</li>{% endfor %}</ul></div></div>
+  <div class="col-lg-6"><div class="cardx"><h3>Allergy &amp; restriction notes</h3>
+    {% if p.allergies and p.allergies|lower not in ['none','nil','no'] %}<p><b>Allergies:</b> {{ p.allergies }}</p>{% endif %}
+    {% if p.restrictions and p.restrictions|lower not in ['none','nil','no'] %}<p><b>Restrictions:</b> {{ p.restrictions }}</p>{% endif %}
+    {% for r in restr %}<div class="warn mb-2">⚠️ {{ r }}</div>{% else %}<p class="text-muted mb-0">No allergies or restrictions recorded.</p>{% endfor %}
+  </div></div>
+</div>
+<p class="disclaimer mt-3 mb-0">{{ a.disclaimer }}</p>
+<script id="page-data" type="application/json">{{ data|tojson }}</script>
+{% endblock %}

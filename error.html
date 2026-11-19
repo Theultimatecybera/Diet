@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Error {{ code }}{% endblock %}{% block heading %}Error {{ code }}{% endblock %}
+{% block content %}<div class="cardx text-center py-5"><div style="font-size:3rem">🥕</div><h2>{{ msg }}</h2><a class="btn-green mt-3" href="{{ url_for('index') }}">Back to home</a></div>{% endblock %}

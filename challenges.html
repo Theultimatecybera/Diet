@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Challenges{% endblock %}
+{% block heading %}Daily challenges{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat"><div class="badge-ico">⭐</div><div><div class="val" id="totalPts">{{ stats.points }}</div><div class="lbl">Total points</div></div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat org"><div class="badge-ico">🔥</div><div><div class="val">{{ stats.streak }}</div><div class="lbl">Day streak</div></div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat sky"><div class="badge-ico">📅</div><div><div class="val">{{ week_pct }}%</div><div class="lbl">This week · {{ week_pts }} pts</div></div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="cardx"><div class="stat"><div class="badge-ico">🌟</div><div><div class="val">{{ stats.perfect_days }}</div><div class="lbl">Perfect days</div></div></div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="cardx">
+    <h3>Today's checklist</h3>
+    <div class="d-flex justify-content-between small mb-1"><span><span id="doneCount">{{ done|length }}</span> of {{ CHALLENGES|length }} done · <span id="todayPts">{{ today_pts }}</span>/{{ max_pts }} pts</span><b id="pctText">{{ pct }}%</b></div>
+    <div class="progress-x org mb-3"><span id="pctBar" style="width:{{ pct }}%"></span></div>
+    <div class="d-grid gap-2">
+    {% for c in CHALLENGES %}
+      <button type="button" class="ch {{ 'done' if c.id in done }}" data-challenge="{{ c.id }}" data-points="{{ c.points }}" aria-pressed="{{ 'true' if c.id in done else 'false' }}">
+        <span class="em">{{ c.icon }}</span><span class="t">{{ c.title }}<br><small class="text-muted fw-normal">+{{ c.points }} points</small></span><span class="chk">✓</span></button>
+    {% endfor %}
+    </div>
+  </div></div>
+  <div class="col-lg-6"><div class="cardx"><h3>Weekly progress</h3><div class="chart-box"><canvas id="chChart"></canvas></div></div></div>
+</div>
+<div class="cardx mb-3">
+  <h3>Achievement badges <span class="pill">{{ badges|selectattr('earned')|list|length }} / {{ badges|length }} earned</span></h3>
+  <div class="row g-3">{% for b in badges %}
+    <div class="col-6 col-md-4 col-xl"><div class="badge-card {{ 'earned' if b.earned }}"><div class="em">{{ b.icon }}</div><b>{{ b.name }}</b><small>{{ b.desc }}</small>
+      <div class="progress-x org mt-2" style="height:6px"><span style="width:{{ b.current*100/b.target }}%"></span></div><small>{{ b.current }} / {{ b.target }}</small></div></div>{% endfor %}</div>
+</div>
+<div class="cardx"><h3>Challenge history (last 14 days)</h3>
+  <div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Completed</th><th>Points</th><th style="width:40%">Completion</th></tr></thead>
+  <tbody>{% for r in history %}<tr><td>{{ r.date }}</td><td>{{ r.done }} / {{ CHALLENGES|length }}</td><td>{{ r.points }}</td><td><div class="progress-x org"><span style="width:{{ r.pct }}%"></span></div></td></tr>{% endfor %}</tbody></table></div></div>
+<script id="page-data" type="application/json">{{ data|tojson }}</script>
+{% endblock %}
